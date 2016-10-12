@@ -20,48 +20,49 @@ from cliinterface import CliInterface
 
 
 def main():
-    try:
-        main_dir = os.path.dirname(__file__)
+    # try:
+    main_dir = os.path.dirname(__file__)
 
-        ap = argparse.ArgumentParser()
-        ap.add_argument("-d", "--display", type=int, default=1,
-                        help="Whether or not frames should be displayed.")
-        ap.add_argument("-c", "--cli", type=int, default=1,
-                        help="Whether or not curses process should start.")
-        args = vars(ap.parse_args())
+    ap = argparse.ArgumentParser()
+    ap.add_argument("-d", "--display", type=int, default=1,
+                    help="Whether or not frames should be displayed.")
+    ap.add_argument("-c", "--cli", type=int, default=1,
+                    help="Whether or not curses process should start.")
+    args = vars(ap.parse_args())
 
-        # #########################################################################
-        # QUEUES
-        # #########################################################################
-        queueOBJS = Queue.Queue()
-        queueSRL = Queue.Queue()
-        queueCLI = Queue.Queue()
+    # #########################################################################
+    # QUEUES
+    # #########################################################################
+    queueOBJS = Queue.Queue()
+    queueSRL = Queue.Queue()
+    queueCLI = Queue.Queue()
 
-        # #########################################################################
-        # LOGS
-        # #########################################################################
-        logger1 = createLogger(main_dir, 'droneNav', 'log')
-        logger2 = createLogger(main_dir, 'serialCom', 'logValues')
+    # #########################################################################
+    # LOGS
+    # #########################################################################
+    logger1 = createLogger(main_dir, 'droneNav', 'log')
+    logger2 = createLogger(main_dir, 'serialCom', 'logValues')
 
-        # #########################################################################
-        # OBJECTS
-        # #########################################################################
-        vis_sys = VisionSystem(queueOBJS)
-        serial_port = SerialCom(queueSRL)
-        cli = CliInterface(queueCLI, main_dir)
+    # #########################################################################
+    # OBJECTS
+    # #########################################################################
+    vis_sys = VisionSystem(queueOBJS)
+    serial_port = SerialCom(queueSRL)
+    cli = CliInterface(queueCLI, main_dir)
 
-        # #########################################################################
-        # STARTS
-        # #########################################################################
-        vis_sys.start()
-        serial_port.start()
-        if args['cli'] > 0:
-            cli.start()
+    # #########################################################################
+    # STARTS
+    # #########################################################################
+    vis_sys.start()
+    serial_port.start()
+    if args['cli'] > 0:
+        cli.start()
 
-    except (KeyboardInterrupt, SystemExit):
-        cli.stop()
-        vis_sys.stop()
-        serial_port.stop()
+    # except Exception as e:
+    #     print(e)
+    #     cli.stop()
+    #     vis_sys.stop()
+    #     serial_port.stop()
 
 
 def createLogger(log_dir, loggerID, name):
