@@ -10,7 +10,7 @@ from threading import Thread
 
 
 class PiVideoStream:
-    def __init__(self, resolution=(320, 240), framerate=60):
+    def __init__(self, resolution=(320, 240), framerate=30):
         # initialize the camera and stream
         self.camera = PiCamera()
         self.camera.resolution = resolution
@@ -26,7 +26,6 @@ class PiVideoStream:
         self.stopped = False
 
         self.t = Thread(target=self.update, args=())
-        self.t.daemon = True
 
     def start(self):
         # start the thread to read frames from the video stream

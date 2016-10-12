@@ -47,7 +47,7 @@ class VisionSystem:
         while self.working:
             frame = self.video_stream.read()
             frame_processed = self.process_frame(frame, self.settings)
-            self.detect_shapes(frame)
+            self.detect_shapes(frame_processed)
 
             cv2.imshow('Frame', frame)
             cv2.imshow('Processed', frame_processed)
@@ -118,7 +118,8 @@ class VisionSystem:
         # FIND COUNTOURS
         # #####################################################################
         cnts = cv2.findContours(frame.copy(),
-                                cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                                cv2.RETR_EXTERNAL,
+                                cv2.CHAIN_APPROX_SIMPLE)
         cnts = cnts[0] if imutils.is_cv2() else cnts[1]
 
         # #####################################################################
@@ -179,8 +180,10 @@ class VisionSystem:
             # otherwise, we assume the shape is a circle
             else:
                 shape = "circle"
-            # #####################################################################
 
+            # #################################################################
+            # COMPUTING CENTER
+            # #################################################################
             M = cv2.moments(approx_cnt)
             approx_cnt_X = int((M['m10'] / M['m00']))
             approx_cnt_Y = int((M['m01'] / M['m00']))
@@ -198,3 +201,8 @@ class VisionSystem:
             c = c.astype('int')
 
             self.draw_cntrs_features(frame, self.settings, self.objs[j])
+
+
+if __name__ == "__main__":
+    vs = VisionSystem()
+    vs.start()
