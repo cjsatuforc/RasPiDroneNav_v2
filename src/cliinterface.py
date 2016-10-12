@@ -225,9 +225,13 @@ class CliInterface:
             elif isinstance(setts[key], int):
                 cfg.set('VisionParams', key, str(setts[key]))
 
-
         configFile = open(path, 'w')
         cfg.write(configFile)
         configFile.close()
 
         self.configExists = True
+
+
+if __name__ == "__main__":
+    cli = CliInterface()
+    cli.start()
