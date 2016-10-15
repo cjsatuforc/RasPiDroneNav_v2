@@ -13,6 +13,8 @@ vertices, area and name .
 import cv2
 import time
 import imutils
+import Queue
+import signal
 from threading import Thread
 from pivideostream import PiVideoStream
 
@@ -41,6 +43,8 @@ class VisionSystem:
         return True
 
     def stop(self):
+        self.video_stream.stop()
+        cv2.destroyAllWindows()
         self.working = False
 
     def update(self):
@@ -129,7 +133,7 @@ class VisionSystem:
         # clear list
         self.objs = []
 
-        for c in cnts:
+        for index, c in enumerate(cnts):
             verts = []
             vrt = []
 
@@ -185,8 +189,12 @@ class VisionSystem:
             # COMPUTING CENTER
             # #################################################################
             M = cv2.moments(approx_cnt)
-            approx_cnt_X = int((M['m10'] / M['m00']))
-            approx_cnt_Y = int((M['m01'] / M['m00']))
+            try:
+                approx_cnt_X = int((M['m10'] / M['m00']))
+                approx_cnt_Y = int((M['m01'] / M['m00']))
+            except ZeroDivisionError:
+                approx_cnt_X = 0
+                approx_cnt_Y = 0
 
             obj = {'shape': shape,
                    'verts': verts,
@@ -200,9 +208,21 @@ class VisionSystem:
             c = c.astype('float')
             c = c.astype('int')
 
-            self.draw_cntrs_features(frame, self.settings, self.objs[j])
+            self.draw_cntrs_features(frame, self.settings, self.objs[index])
 
 
 if __name__ == "__main__":
-    vs = VisionSystem()
-    vs.start()
+    try:
+        q = Queue.Queue()
+        vs = VisionSystem(q)
+        vs.start()
+        # pauses main thread in this place so it can catch
+        # exceptions; otherwise try/except just ends and thread
+        # is running in the background
+        signal.pause()
+    except KeyboardInterrupt:
+        vs.stop()
+        print('Keyboard Interrupt')
+    except Exception as e:
+        vs.stop()
+        print(e)

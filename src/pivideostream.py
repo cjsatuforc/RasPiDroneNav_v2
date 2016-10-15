@@ -3,9 +3,11 @@
 
 
 # import the necessary packages
+import time
 from picamera.array import PiRGBArray
 from picamera import PiCamera
 from threading import Thread
+import signal
 # import cv2
 
 
@@ -27,6 +29,10 @@ class PiVideoStream:
 
         self.t = Thread(target=self.update, args=())
 
+        self.startTime = 0
+        self.endTime = 0
+        self.dt = 0
+
     def start(self):
         # start the thread to read frames from the video stream
         self.t.start()
@@ -35,6 +41,7 @@ class PiVideoStream:
     def update(self):
         # keep looping infinitely until the thread is stopped
         for f in self.stream:
+            self.startTime = time.time()
             # grab the frame from the stream and clear the stream in
             # preparation for the next frame
             self.frame = f.array
@@ -46,7 +53,10 @@ class PiVideoStream:
                 self.stream.close()
                 self.rawCapture.close()
                 self.camera.close()
-                self.t.join()
+                return
+
+            self.endTime = time.time()
+            self.dt = self.endTime - self.startTime
 
     def read(self):
         # return the frame most recently read
@@ -58,5 +68,16 @@ class PiVideoStream:
 
 
 if __name__ == "__main__":
-    pvs = PiVideoStream()
-    pvs.start()
+    try:
+        pvs = PiVideoStream()
+        pvs.start()
+        # pauses main thread in this place so it can catch
+        # exceptions; otherwise try/except just ends and thread
+        # is running in the background
+        signal.pause()
+    except KeyboardInterrupt:
+        pvs.stop()
+        print('Keyboard Interrupt')
+    except Exception as e:
+        pvs.stop()
+        print(e)
