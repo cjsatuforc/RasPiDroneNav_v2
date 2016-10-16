@@ -33,7 +33,7 @@ class VisionSystem:
                          'dispVertices': False, 'dispNames': False,
                          'dispCenters': False, 'dispTHEcenter': False,
                          'erodeValue': 0, 'lowerThresh': 40, 'working': True,
-                         'autoMode': False}
+                         'autoMode': False, 'dispGoal': True}
 
         self.prevStateDisp = self.settings['disp']
         self.prevStateDispThresh = self.settings['dispThresh']
@@ -51,18 +51,20 @@ class VisionSystem:
         self.classLogger.debug('Starting vision system.')
         self.video_stream.start()
         time.sleep(2)
+        self.working = True
         self.t.start()
-        return True
+        return
 
     def stop(self):
-        cv2.destroyAllWindows()
         self.working = False
-        self.video_stream.stop()
-        self.classLogger.debug('Ending vision system.')
+        self.t.join()
         return
 
     def update(self):
-        while self.working:
+        while 1:
+            if self.working is False:
+                break
+
             if self.queue_MAIN_2_VS.empty():
                 pass
             if not self.queue_MAIN_2_VS.empty():
@@ -108,9 +110,9 @@ class VisionSystem:
             # send objects to state machine
             self.queue_VS_2_STM.put(self.objs)
 
-        if not self.working:
-            # self.t.join()
-            pass
+        cv2.destroyAllWindows()
+        self.video_stream.stop()
+        self.classLogger.debug('Ending vision system.')
 
     def process_frame(self, fr, setts):
         """ Takes frame and processes it based on settings. """
@@ -258,6 +260,20 @@ class VisionSystem:
             self.draw_cntrs_features(frameOriginal,
                                      self.settings,
                                      self.objs[index])
+
+        if self.settings['dispTHEcenter']:
+            cv2.circle(frameOriginal,
+                       (self.resolution[0] / 2, self.resolution[1] / 2),
+                       2,
+                       (50, 50, 255),
+                       1)
+
+        if self.settings['dispGoal'] and bool(self.objs):
+            cv2.line(frameOriginal,
+                     (self.resolution[0] / 2, self.resolution[1] / 2),
+                     self.objs[0]['center'],
+                     (255, 0, 0),
+                     2)
 
 
 if __name__ == "__main__":

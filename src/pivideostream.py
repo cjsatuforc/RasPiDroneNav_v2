@@ -65,6 +65,7 @@ class PiVideoStream:
     def stop(self):
         # indicate that the thread should be stopped
         self.stopped = True
+        self.t.join()
 
 
 if __name__ == "__main__":

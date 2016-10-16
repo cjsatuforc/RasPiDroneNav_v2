@@ -31,7 +31,7 @@ class CliInterface:
                          'dispVertices': False, 'dispNames': False,
                          'dispCenters': False, 'dispTHEcenter': False,
                          'erodeValue': 0, 'lowerThresh': 40, 'working': True,
-                         'autoMode': False}
+                         'autoMode': False, 'dispGoal': True}
 
         # configuration parser
         self.main_dir = main_dir
@@ -61,17 +61,21 @@ class CliInterface:
                              self.configFilePath,
                              self.settings)
 
+        self.running = True
         # start the thread
         self.t.start()
         return self
 
     def stop(self):
         self.running = False
-        self.class_logger.debug('Ending console interface.')
+        self.t.join()
         return
 
     def update(self):
-        while self.running:
+        while 1:
+            if self.running is False:
+                break
+
             # wrefresh(window)
             self.printData()
 
@@ -136,6 +140,9 @@ class CliInterface:
             # M
             elif self.keyPressed == ord('m'):
                 self.settings['autoMode'] = not self.settings['autoMode']
+            # N
+            elif self.keyPressed == ord('n'):
+                self.settings['dispGoal'] = not self.settings['dispGoal']
 
             # it puts the data in queueCLI after pressing button because
             # it is a blocking getch() (timeout(-1))
@@ -143,6 +150,7 @@ class CliInterface:
 
         self.queueCLI.put(self.settings)
         endwin()
+        self.class_logger.debug('Ending console interface.')
 
     def write(self, dataIn):
         self.settings = dataIn
@@ -194,7 +202,7 @@ class CliInterface:
 
         wmove(self.window, 8, 1)
         waddstr(self.window,
-                '{0:<36}{1} : {2}'.format('Display the centers',
+                '{0:<36}{1} : {2}'.format('Display the center',
                                           '<y>',
                                           self.settings['dispTHEcenter']))
 
@@ -229,6 +237,11 @@ class CliInterface:
         waddstr(self.window,
                 '{0:<36}{1}'.format('Auto mode',
                                     self.settings['autoMode']))
+
+        wmove(self.window, 17, 1)
+        waddstr(self.window,
+                '{0:<36}{1}'.format('Display goal',
+                                    self.settings['dispGoal']))
 
     def initConfig(self, cfg, path, setts):
         """

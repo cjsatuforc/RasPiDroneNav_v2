@@ -16,23 +16,28 @@ import logging
 import argparse
 import signal
 from visionsystem import VisionSystem
-from serialcom import SerialCom
 from cliinterface import CliInterface
+from dronestatemachine import DroneStateMachine
 
 stopped = False
-
 settings = {'disp': False, 'dispThresh': False,
             'dispContours': False, 'dispApproxContours': False,
             'dispVertices': False, 'dispNames': False,
             'dispCenters': False, 'dispTHEcenter': False,
             'erodeValue': 0, 'lowerThresh': 40, 'working': True,
-            'autoMode': False}
+            'autoMode': False, 'dispGoal': True}
 
 
 def main():
-    # try:
+    # #########################################################################
+    # LOCAL VARS
+    # #########################################################################
     main_dir = os.path.dirname(__file__)
+    autoModePrev = False
 
+    # #########################################################################
+    # ARGS PARSING
+    # #########################################################################
     ap = argparse.ArgumentParser()
     ap.add_argument("-d", "--display", type=int, default=1,
                     help="Whether or not frames should be displayed.")
@@ -59,15 +64,14 @@ def main():
     # OBJECTS
     # #########################################################################
     vis_sys = VisionSystem(queue_MAIN_2_VS, queue_VS_2_STM)
-    serial_port = SerialCom(queue_STM_2_SRL)
     cli = CliInterface(queue_CLI_2_MAIN, main_dir)
+    drone_stm = DroneStateMachine(queue_VS_2_STM, queue_STM_2_SRL)
 
     # #########################################################################
     # STARTS
     # #########################################################################
     logger1.debug('Starting main.')
     vis_sys.start()
-    serial_port.start()
     if args['cli'] > 0:
         cli.start()
 
@@ -86,11 +90,18 @@ def main():
         # SEND SETTINGS
         queue_MAIN_2_VS.put(settings)
 
+        if autoModePrev is False and settings['autoMode'] is True:
+            drone_stm.start()
+        elif autoModePrev is True and settings['autoMode'] is False:
+            drone_stm.stop()
+
         if not settings['working']:
             break
 
-    serial_port.stop()
+        autoModePrev = settings['autoMode']
+
     vis_sys.stop()
+    drone_stm.stop()
     logger1.debug('Ending main.')
 
 
@@ -108,6 +119,15 @@ def createLogger(log_dir, loggerID, name):
     fh.setFormatter(formatter)
     log.addHandler(fh)
     return log
+
+
+def run_once(f):
+    def wrapper(*args, **kwargs):
+        if not wrapper.has_run:
+            wrapper.has_run = True
+            return f(*args, **kwargs)
+    wrapper.has_run = False
+    return wrapper
 
 
 if __name__ == "__main__":

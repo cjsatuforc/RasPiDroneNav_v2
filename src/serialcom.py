@@ -18,6 +18,8 @@ class SerialCom():
         self.classLogger = logging.getLogger('droneNav.SerialCom')
         self.valuesLogger = logging.getLogger('serialCom.SerialCom')
 
+        self.t = Thread(target=self.update, args=())
+
     def start(self):
         self.classLogger.debug('Starting serial com.')
         self.SP = serial.Serial('/dev/ttyAMA0',
@@ -26,19 +28,25 @@ class SerialCom():
         self.SP.flush()
         self.SP.flushInput()
 
-        t = Thread(target=self.update, args=())
-        t.daemon = True
-        t.start()
+        self.t = Thread(target=self.update, args=())
+        # self.t.daemon = True
+        self.t.start()
         return self
 
     def update(self):
-        while self.running:
+        while 1:
+            if self.running is False:
+                break
+
             if self.queueSRL.empty():
                 continue
             if not self.queueSRL.empty():
                 self.data = self.queueSRL.get()
                 self.queueSRL.task_done()
-                self.SP.write(self.data)
+                try:
+                    self.SP.write(self.data)
+                except:
+                    continue
 
                 try:
                     logText = '{0}:{1}:{2}:{3}:{4}:{5}:{6}'.format(ord(self.data[0]),
@@ -54,6 +62,9 @@ class SerialCom():
                 except:
                     pass
 
+        self.SP.close()
+        self.classLogger.debug('Ending serial com.')
+
     def read(self):
         return self.numericals
 
@@ -64,6 +75,6 @@ class SerialCom():
 
     def stop(self):
         self.running = False
-        self.SP.close()
-        self.classLogger.debug('Ending serial com.')
+        # join means wait here for the thread to end
+        self.t.join()
         return
