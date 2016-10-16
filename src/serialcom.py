@@ -54,8 +54,6 @@ class SerialCom():
                 except:
                     pass
 
-        self.stop()
-
     def read(self):
         return self.numericals
 
@@ -65,5 +63,7 @@ class SerialCom():
         return
 
     def stop(self):
+        self.running = False
         self.SP.close()
+        self.classLogger.debug('Ending serial com.')
         return

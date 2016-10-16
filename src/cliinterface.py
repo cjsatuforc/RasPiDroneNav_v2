@@ -26,7 +26,8 @@ class CliInterface:
         self.running = True
         self.keyPressed = 0
 
-        self.settings = {'dispThresh': False, 'dispContours': False,
+        self.settings = {'disp': False, 'dispThresh': False,
+                         'dispContours': False, 'dispApproxContours': False,
                          'dispVertices': False, 'dispNames': False,
                          'dispCenters': False, 'dispTHEcenter': False,
                          'erodeValue': 0, 'lowerThresh': 40, 'working': True,
@@ -66,6 +67,7 @@ class CliInterface:
 
     def stop(self):
         self.running = False
+        self.class_logger.debug('Ending console interface.')
         return
 
     def update(self):
@@ -73,58 +75,74 @@ class CliInterface:
             # wrefresh(window)
             self.printData()
 
+            # BLOCKED IN THIS PLACED UNTIL KEY PRESSED
             self.keyPressed = wgetch(self.window)
+
+
             # ESCAPE
             if self.keyPressed == 27:
                 self.settings['working'] = not self.settings['working']
-                wmove(self.stdscr, self.max_y, self.max_x)
-                waddstr(self.window, '\nESC interrupt.\n', A_BOLD)
-                wgetch(self.window)
-                self.running = False
-            elif self.keyPressed == ord('q'):
+                break
+            # 1
+            elif self.keyPressed == ord('1'):
+                self.settings['disp'] = not self.settings['disp']
+            # 2
+            elif self.keyPressed == ord('2'):
                 self.settings['dispThresh'] = not self.settings['dispThresh']
+            # Q
+            elif self.keyPressed == ord('q'):
+                self.settings['dispApproxContours'] = not self.settings['dispApproxContours']
+            # W
             elif self.keyPressed == ord('w'):
                 self.settings['dispContours'] = not self.settings['dispContours']
+            # E
             elif self.keyPressed == ord('e'):
                 self.settings['dispVertices'] = not self.settings['dispVertices']
+            # R
             elif self.keyPressed == ord('r'):
                 self.settings['dispNames'] = not self.settings['dispNames']
+            # T
             elif self.keyPressed == ord('t'):
                 self.settings['dispCenters'] = not self.settings['dispCenters']
+            # Y
             elif self.keyPressed == ord('y'):
                 self.settings['dispTHEcenter'] = not self.settings['dispTHEcenter']
+            # A
             elif self.keyPressed == ord('a'):
                 self.settings['lowerThresh'] = self.settings['lowerThresh'] + 2
                 if self.settings['lowerThresh'] > 255:
                     self.settings['lowerThresh'] = 255
+            # Z
             elif self.keyPressed == ord('z'):
                 self.settings['lowerThresh'] = self.settings['lowerThresh'] - 2
                 if self.settings['lowerThresh'] < 0:
                     self.settings['lowerThresh'] = 0
+            # S
             elif self.keyPressed == ord('s'):
                 self.settings['erodeValue'] = self.settings['erodeValue'] + 1
                 if self.settings['erodeValue'] > 255:
                     self.settings['erodeValue'] = 255
+            # X
             elif self.keyPressed == ord('x'):
                 self.settings['erodeValue'] = self.settings['erodeValue'] - 1
                 if self.settings['erodeValue'] < 0:
                     self.settings['erodeValue'] = 0
+            # P
             elif self.keyPressed == ord('p'):
                 self.writeConfig(self.configPars, self.configFilePath, self.settings)
+            # O
             elif self.keyPressed == ord('o'):
                 self.readConfig(self.configPars, self.configFilePath, self.settings)
+            # M
             elif self.keyPressed == ord('m'):
                 self.settings['autoMode'] = not self.settings['autoMode']
-
-            # TODO: add some failsafe here that will shutdown the drone
-
 
             # it puts the data in queueCLI after pressing button because
             # it is a blocking getch() (timeout(-1))
             self.queueCLI.put(self.settings)
 
+        self.queueCLI.put(self.settings)
         endwin()
-        self.t.join()
 
     def write(self, dataIn):
         self.settings = dataIn
@@ -140,41 +158,77 @@ class CliInterface:
         wmove(self.window, 1, 1)
         waddstr(self.window, '\n')
         wmove(self.window, 2, 1)
-        waddstr(self.window, 'Parameters of the vision processing:\n', A_BOLD)
+        waddstr(self.window,
+                '{0:<36}'.format('Parameters of the vision processing'),
+                A_BOLD)
+
         wmove(self.window, 3, 1)
-        waddstr(self.window, 'Display mask     <q>: {0} \n'.
-                             format(self.settings['dispThresh']))
+        waddstr(self.window,
+                '{0:<36}{1} : {2}'.format('Display approximated contours',
+                                          '<q>',
+                                          self.settings['dispApproxContours']))
+
         wmove(self.window, 4, 1)
-        waddstr(self.window, 'Display contours <w>: {0} \n'.
-                             format(self.settings['dispContours']))
+        waddstr(self.window,
+                '{0:<36}{1} : {2}'.format('Display contours',
+                                          '<w>',
+                                          self.settings['dispContours']))
+
         wmove(self.window, 5, 1)
-        waddstr(self.window, 'Display vertices <e>: {0} \n'.
-                             format(self.settings['dispVertices']))
+        waddstr(self.window,
+                '{0:<36}{1} : {2}'.format('Display vertices',
+                                          '<e>',
+                                          self.settings['dispVertices']))
+
         wmove(self.window, 6, 1)
-        waddstr(self.window, 'Display names    <r>: {0} \n'.
-                             format(self.settings['dispNames']))
+        waddstr(self.window,
+                '{0:<36}{1} : {2}'.format('Display names',
+                                          '<r>',
+                                          self.settings['dispNames']))
+
         wmove(self.window, 7, 1)
-        waddstr(self.window, 'Display centers    <t>: {0} \n'.
-                             format(self.settings['dispCenters']))
+        waddstr(self.window,
+                '{0:<36}{1} : {2}'.format('Display centers',
+                                          '<t>',
+                                          self.settings['dispCenters']))
+
         wmove(self.window, 8, 1)
-        waddstr(self.window, 'Display the center    <y>: {0} \n'.
-                             format(self.settings['dispTHEcenter']))
+        waddstr(self.window,
+                '{0:<36}{1} : {2}'.format('Display the centers',
+                                          '<y>',
+                                          self.settings['dispTHEcenter']))
+
         wmove(self.window, 9, 1)
-        waddstr(self.window, 'Threshold      <a,z>: {0} - 255\n'.
-                             format(self.settings['lowerThresh']))
+        waddstr(self.window,
+                '{0:<34}{1} : {2:>3}-255'.format('Threshold',
+                                                 '<a,z>',
+                                                 self.settings['lowerThresh']))
+
         wmove(self.window, 10, 1)
-        waddstr(self.window, 'Erode          <s,x>: {0}\n'.
-                             format(self.settings['erodeValue']))
+        waddstr(self.window,
+                '{0:<34}{1} : {2:>3}'.format('Erode',
+                                             '<a,z>',
+                                             self.settings['erodeValue']))
+
         wmove(self.window, 12, 1)
-        waddstr(self.window, 'Store values to config.ini   <p>\n')
+        waddstr(self.window,
+                '{0:<36}{1}'.format('Store values to config.ini',
+                                    '<p>'))
+
         wmove(self.window, 13, 1)
-        waddstr(self.window, 'Restore values from config.ini   <o>\n')
+        waddstr(self.window,
+                '{0:<36}{1}'.format('Restore values to config.ini',
+                                    '<o>'))
+
         wmove(self.window, 16, 1)
-        waddstr(self.window, 'Process working     : {0} \n'.
-                             format(self.settings['working']))
+        waddstr(self.window,
+                '{0:<36}{1}'.format('Process working',
+                                    self.settings['working']))
+
         wmove(self.window, 16, 1)
-        waddstr(self.window, 'Auto mode     : {0} \n'.
-                             format(self.settings['autoMode']))
+        waddstr(self.window,
+                '{0:<36}{1}'.format('Auto mode',
+                                    self.settings['autoMode']))
 
     def initConfig(self, cfg, path, setts):
         """

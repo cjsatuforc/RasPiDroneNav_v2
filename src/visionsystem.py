@@ -15,68 +15,113 @@ import time
 import imutils
 import Queue
 import signal
+import logging
 from threading import Thread
 from pivideostream import PiVideoStream
 
 
 class VisionSystem:
     """docstring for visionSystem"""
-    def __init__(self, q):
-        self.queueOBJS = q
+    def __init__(self, q1, q2):
+        self.queue_MAIN_2_VS = q1
+        self.queue_VS_2_STM = q2
         self.resolution = (320, 240)
         self.video_stream = PiVideoStream(self.resolution, 60)
-        self.settings = {'dispThresh': False, 'dispContours': False,
+
+        self.settings = {'disp': False, 'dispThresh': False,
+                         'dispContours': False, 'dispApproxContours': False,
                          'dispVertices': False, 'dispNames': False,
                          'dispCenters': False, 'dispTHEcenter': False,
                          'erodeValue': 0, 'lowerThresh': 40, 'working': True,
                          'autoMode': False}
+
+        self.prevStateDisp = self.settings['disp']
+        self.prevStateDispThresh = self.settings['dispThresh']
+
         self.objs = []
+
+        self.classLogger = logging.getLogger('droneNav.VisionSys')
 
         self.working = True
         self.t = Thread(target=self.update, args=())
         self.t.daemon = True
 
+
     def start(self):
+        self.classLogger.debug('Starting vision system.')
         self.video_stream.start()
         time.sleep(2)
         self.t.start()
         return True
 
     def stop(self):
-        self.video_stream.stop()
         cv2.destroyAllWindows()
         self.working = False
+        self.video_stream.stop()
+        self.classLogger.debug('Ending vision system.')
+        return
 
     def update(self):
         while self.working:
+            if self.queue_MAIN_2_VS.empty():
+                pass
+            if not self.queue_MAIN_2_VS.empty():
+                self.settings = self.queue_MAIN_2_VS.get()
+                self.queue_MAIN_2_VS.task_done()
+
             frame = self.video_stream.read()
             frame_processed = self.process_frame(frame, self.settings)
-            self.detect_shapes(frame_processed)
+            self.detect_shapes(frame, frame_processed)
 
-            cv2.imshow('Frame', frame)
-            cv2.imshow('Processed', frame_processed)
-            key = cv2.waitKey(1) & 0xFF
 
-            if key == 27:
-                self.video_stream.stop()
-                self.working = False
+            if self.settings['disp'] is False and self.prevStateDisp is False:
+                pass
+            if self.settings['disp'] is True and self.prevStateDisp is False:
+                cv2.namedWindow('Frame')
+                key = cv2.waitKey(1) & 0xFF
+                # cv2.startWindowThread()
+            elif self.settings['disp'] is True and self.prevStateDisp is True:
+                key = cv2.waitKey(1) & 0xFF
+                cv2.imshow('Frame', frame)
+            elif self.settings['disp'] is False and self.prevStateDisp is True:
+                cv2.destroyWindow('Frame')
+
+            if self.settings['dispThresh'] is False and self.prevStateDispThresh is False:
+                pass
+            if self.settings['dispThresh'] is True and self.prevStateDispThresh is False:
+                cv2.namedWindow('Processed')
+                key = cv2.waitKey(1) & 0xFF
+                # cv2.startWindowThread()
+            elif self.settings['dispThresh'] is True and self.prevStateDispThresh is True:
+                key = cv2.waitKey(1) & 0xFF
+                cv2.imshow('Processed', frame_processed)
+            elif self.settings['dispThresh'] is False and self.prevStateDispThresh is True:
+                cv2.destroyWindow('Processed')
+
+            if self.settings['dispThresh'] or self.settings['disp']:
+                if key == 27:
+                    self.video_stream.stop()
+
+            self.prevStateDisp = self.settings['disp']
+            self.prevStateDispThresh = self.settings['dispThresh']
 
             # send objects to state machine
-            self.queueOBJS.put(self.objs)
+            self.queue_VS_2_STM.put(self.objs)
 
         if not self.working:
-            self.t.join()
+            # self.t.join()
+            pass
 
     def process_frame(self, fr, setts):
         """ Takes frame and processes it based on settings. """
         # frame = imutils.resize(frame, width=600)
-        fr = cv2.flip(fr, 0)
+        # fr = cv2.flip(fr, 0)
         # frame = cv2.copyMakeBorder(frame, 3, 3, 3, 3,
         #                            cv2.BORDER_CONSTANT,
         #                            value=(255, 255, 255))
         frameGray = cv2.cvtColor(fr, cv2.COLOR_BGR2GRAY)
-        # frameBlurred = cv2.GaussianBlur(frameGray, (5, 5), 0)
-        frameThresh = cv2.threshold(frameGray, setts['lowerThresh'], 255,
+        frameBlurred = cv2.GaussianBlur(frameGray, (7, 7), 0)
+        frameThresh = cv2.threshold(frameBlurred, setts['lowerThresh'], 255,
                                     cv2.THRESH_BINARY_INV)[1]
         frameThresh = cv2.erode(frameThresh, None,
                                 iterations=setts['erodeValue'])
@@ -94,9 +139,11 @@ class VisionSystem:
         names, vertives, centers) on frame.
         """
         if setts['dispContours']:
-            cv2.drawContours(fr, [obj['approxPerimeter']], -1, (0, 255, 0), 1)
+            cv2.drawContours(fr, [obj['contour']], -1, (255, 255, 0), 1)
+        if setts['dispApproxContours']:
+            cv2.drawContours(fr, [obj['approx_cnt']], -1, (0, 255, 0), 1)
         if setts['dispNames']:
-            cv2.putText(fr, obj['shapeName'] + str(obj['approxPerimeterArea']),
+            cv2.putText(fr, obj['shape'] + str(obj['approx_cnt_area']),
                         obj['center'], cv2.FONT_HERSHEY_SIMPLEX,
                         0.5, (255, 255, 255), 1)
         if setts['dispVertices']:
@@ -105,7 +152,7 @@ class VisionSystem:
         if setts['dispCenters']:
             cv2.circle(fr, (obj['center']), 2, (50, 255, 50), 1)
 
-    def detect_shapes(self, frame):
+    def detect_shapes(self, frameOriginal, frameProcessed):
         """
         This functiion simplifies the contour, identifies shape by name,
         unpacks vertices, computes area. Then it returns a dictionary with
@@ -121,7 +168,7 @@ class VisionSystem:
         # #####################################################################
         # FIND COUNTOURS
         # #####################################################################
-        cnts = cv2.findContours(frame.copy(),
+        cnts = cv2.findContours(frameProcessed.copy(),
                                 cv2.RETR_EXTERNAL,
                                 cv2.CHAIN_APPROX_SIMPLE)
         cnts = cnts[0] if imutils.is_cv2() else cnts[1]
@@ -208,7 +255,9 @@ class VisionSystem:
             c = c.astype('float')
             c = c.astype('int')
 
-            self.draw_cntrs_features(frame, self.settings, self.objs[index])
+            self.draw_cntrs_features(frameOriginal,
+                                     self.settings,
+                                     self.objs[index])
 
 
 if __name__ == "__main__":

@@ -14,9 +14,19 @@ import Queue
 import os
 import logging
 import argparse
+import signal
 from visionsystem import VisionSystem
 from serialcom import SerialCom
 from cliinterface import CliInterface
+
+stopped = False
+
+settings = {'disp': False, 'dispThresh': False,
+            'dispContours': False, 'dispApproxContours': False,
+            'dispVertices': False, 'dispNames': False,
+            'dispCenters': False, 'dispTHEcenter': False,
+            'erodeValue': 0, 'lowerThresh': 40, 'working': True,
+            'autoMode': False}
 
 
 def main():
@@ -33,9 +43,11 @@ def main():
     # #########################################################################
     # QUEUES
     # #########################################################################
-    queueOBJS = Queue.Queue()
-    queueSRL = Queue.Queue()
-    queueCLI = Queue.Queue()
+    queue_CLI_2_MAIN = Queue.Queue()
+    queue_MAIN_2_VS = Queue.Queue()
+    queue_MAIN_2_STM = Queue.Queue()
+    queue_VS_2_STM = Queue.Queue()
+    queue_STM_2_SRL = Queue.Queue()
 
     # #########################################################################
     # LOGS
@@ -46,23 +58,40 @@ def main():
     # #########################################################################
     # OBJECTS
     # #########################################################################
-    vis_sys = VisionSystem(queueOBJS)
-    serial_port = SerialCom(queueSRL)
-    cli = CliInterface(queueCLI, main_dir)
+    vis_sys = VisionSystem(queue_MAIN_2_VS, queue_VS_2_STM)
+    serial_port = SerialCom(queue_STM_2_SRL)
+    cli = CliInterface(queue_CLI_2_MAIN, main_dir)
 
     # #########################################################################
     # STARTS
     # #########################################################################
+    logger1.debug('Starting main.')
     vis_sys.start()
     serial_port.start()
     if args['cli'] > 0:
         cli.start()
 
-    # except Exception as e:
-    #     print(e)
-    #     cli.stop()
-    #     vis_sys.stop()
-    #     serial_port.stop()
+    # #########################################################################
+    # MAIN LOOP
+    # #########################################################################
+    while 1:
+
+        # UPDATE SETTINGS
+        if not queue_CLI_2_MAIN.empty():
+            settings = queue_CLI_2_MAIN.get()
+            queue_CLI_2_MAIN.task_done()
+        else:
+            continue
+
+        # SEND SETTINGS
+        queue_MAIN_2_VS.put(settings)
+
+        if not settings['working']:
+            break
+
+    serial_port.stop()
+    vis_sys.stop()
+    logger1.debug('Ending main.')
 
 
 def createLogger(log_dir, loggerID, name):
@@ -82,4 +111,7 @@ def createLogger(log_dir, loggerID, name):
 
 
 if __name__ == "__main__":
+    try:
         main()
+    except KeyboardInterrupt:
+        stopped = True
