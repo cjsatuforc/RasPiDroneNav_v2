@@ -47,6 +47,7 @@ class CliInterface:
 
     def start(self):
         self.class_logger.debug('Starting console interface.')
+        self.configPars = ConfigParser.ConfigParser()
         # create or load config file
         self.initConfig(self.configPars, self.configFilePath, self.settings)
 

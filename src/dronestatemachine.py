@@ -18,7 +18,8 @@ class DroneStateMachine:
         self.running = True
         self.autoMode = False
         self.queue_VS_2_STM = q1
-        self.queue_STM_2_SRL = q2
+        self.queue_STM_MAN_2_SRL = q2
+        self.queue_connected = False
         self.objs = []
         self.frequency = 50
         self.compute = False
@@ -54,13 +55,10 @@ class DroneStateMachine:
         # logging
         self.class_logger = logging.getLogger('droneNav.StateMachine')
 
-        self.serial_port = SerialCom(self.queue_STM_2_SRL)
-
         self.t = Thread(target=self.update, args=())
         # self.t.daemon = True
 
     def start(self):
-        self.serial_port.start()
         self.class_logger.info('Starting state machine.')
         self.set_state(self.possibleStates['onTheGround'])
 
@@ -91,8 +89,7 @@ class DroneStateMachine:
                     self.compute = False
                 self.queue_VS_2_STM.task_done()
 
-            if self.compute:
-                self.class_logger.info('while loop')
+            if self.compute and self.queue_connected:
                 # #########################################################
                 # ON THE GROUND STATE
                 # #########################################################
@@ -183,9 +180,9 @@ class DroneStateMachine:
                                int(self.pwm4),
                                int(self.pwm5)]
                 valuesHexString = self.build_data_hex_string(self.values)
-                self.queue_STM_2_SRL.put(valuesHexString)
+                if self.queue_connected:
+                    self.queue_STM_MAN_2_SRL.put(valuesHexString)
 
-        self.serial_port.stop()
         self.log_state_once.has_run = False
         self.class_logger.info('Ending state machine.')
 
@@ -208,9 +205,22 @@ class DroneStateMachine:
         self.class_logger.info(logText)
         return
 
+    def read(self):
+        return [self.pwm0, self.pwm1, self.pwm2,
+                self.pwm3, self.pwm4, self.pwm5]
+
+    def write(self, values_list):
+        self.pwm0 = values_list[0]
+        self.pwm1 = values_list[1]
+        self.pwm2 = values_list[2]
+        self.pwm3 = values_list[3]
+        self.pwm4 = values_list[4]
+        self.pwm5 = values_list[5]
+        return
+
     def set_mode(self, mode):
         self.autoMode = mode
-        self.queue_STM_2_SRL.queue.clear()
+        self.queue_STM_MAN_2_SRL.queue.clear()
         self.queue_MAIN_2_STM.queue.clear()
         return
 
@@ -227,6 +237,10 @@ class DroneStateMachine:
         valueList.insert(0, 0xAA)  # add preamble
         s = array.array('B', valueList).tostring()
         return s
+
+    def connect_queue(self, b):
+        self.queue_connected = b
+        return
 
     def run_once(self, f):
         def wrapper(*args, **kwargs):

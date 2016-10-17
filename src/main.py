@@ -18,6 +18,8 @@ import signal
 from visionsystem import VisionSystem
 from cliinterface import CliInterface
 from dronestatemachine import DroneStateMachine
+from serialcom import SerialCom
+from manualcontrol import ManualControl
 
 stopped = False
 settings = {'disp': False, 'dispThresh': False,
@@ -52,7 +54,7 @@ def main():
     queue_MAIN_2_VS = Queue.Queue()
     queue_MAIN_2_STM = Queue.Queue()
     queue_VS_2_STM = Queue.Queue()
-    queue_STM_2_SRL = Queue.Queue()
+    queue_STM_MAN_2_SRL = Queue.Queue()
 
     # #########################################################################
     # LOGS
@@ -63,17 +65,22 @@ def main():
     # #########################################################################
     # OBJECTS
     # #########################################################################
-    vis_sys = VisionSystem(queue_MAIN_2_VS, queue_VS_2_STM)
-    cli = CliInterface(queue_CLI_2_MAIN, main_dir)
-    drone_stm = DroneStateMachine(queue_VS_2_STM, queue_STM_2_SRL)
+    vis_sys     = VisionSystem(queue_MAIN_2_VS, queue_VS_2_STM)
+    cli         = CliInterface(queue_CLI_2_MAIN, main_dir)
+    man_ctrl    = ManualControl(queue_STM_MAN_2_SRL)
+    drone_stm   = DroneStateMachine(queue_VS_2_STM, queue_STM_MAN_2_SRL)
+    serial_port = SerialCom(queue_STM_MAN_2_SRL)
 
     # #########################################################################
     # STARTS
     # #########################################################################
     logger1.debug('Starting main.')
+    cli.start()
     vis_sys.start()
-    if args['cli'] > 0:
-        cli.start()
+    serial_port.start()
+    drone_stm.start()
+    man_ctrl.start()
+    man_ctrl.connect_queue(True)
 
     # #########################################################################
     # MAIN LOOP
@@ -91,15 +98,22 @@ def main():
         queue_MAIN_2_VS.put(settings)
 
         if autoModePrev is False and settings['autoMode'] is True:
-            drone_stm.start()
+            drone_stm.write(man_ctrl.read())
+            man_ctrl.connect_queue(False)
+            drone_stm.connect_queue(True)
         elif autoModePrev is True and settings['autoMode'] is False:
-            drone_stm.stop()
+            man_ctrl.write(drone_stm.read())
+            drone_stm.connect_queue(False)
+            man_ctrl.connect_queue(True)
+
+        autoModePrev = settings['autoMode']
 
         if not settings['working']:
             break
 
-        autoModePrev = settings['autoMode']
-
+    man_ctrl.stop()
+    cli.stop()
+    serial_port.stop()
     vis_sys.stop()
     drone_stm.stop()
     logger1.debug('Ending main.')

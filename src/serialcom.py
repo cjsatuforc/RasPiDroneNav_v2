@@ -25,6 +25,13 @@ class SerialCom():
         self.SP = serial.Serial('/dev/ttyAMA0',
                                 self.BaudRate,
                                 timeout=5)
+
+        while self.SP.is_open is False:
+            try:
+                self.SP.open()
+            except serial.SerialException:
+                pass
+
         self.SP.flush()
         self.SP.flushInput()
 
@@ -32,6 +39,12 @@ class SerialCom():
         # self.t.daemon = True
         self.t.start()
         return self
+
+    def stop(self):
+        self.running = False
+        # join means wait here for the thread to end
+        self.t.join()
+        return
 
     def update(self):
         while 1:
@@ -71,10 +84,4 @@ class SerialCom():
     def clean(self):
         self.SP.flush()
         self.SP.flushInput()
-        return
-
-    def stop(self):
-        self.running = False
-        # join means wait here for the thread to end
-        self.t.join()
         return
