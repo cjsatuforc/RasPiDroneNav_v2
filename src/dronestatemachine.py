@@ -5,7 +5,6 @@ from threading import Thread, Timer
 import logging
 import array
 import time
-from serialcom import SerialCom
 
 
 class DroneStateMachine:
@@ -25,9 +24,12 @@ class DroneStateMachine:
         self.compute = False
         self.dt = 0.0
         self.resolution = (320, 240)
+        self.n = 0
+        self.interval = 0.02
         self.dx = 0
         self.dy = 0
-        self.n = 0
+        self.goalX = 0
+        self.goalY = 0
 
         self.log_state_once = self.run_once(self.log_state)
 
@@ -55,16 +57,24 @@ class DroneStateMachine:
         # logging
         self.class_logger = logging.getLogger('droneNav.StateMachine')
 
-        self.t = Thread(target=self.update, args=())
+        self.t = Timer(self.interval, self.update, args=())
+        # self.t = Thread(target=self.update, args=())
         # self.t.daemon = True
 
     def start(self):
         self.class_logger.info('Starting state machine.')
         self.set_state(self.possibleStates['onTheGround'])
 
-        self.t = Thread(target=self.update, args=())
-        self.t.start()
+        # self.t = Thread(target=self.update, args=())
+        self.t = Timer(self.interval, self.update, args=())
+
+        # if 3 seconds from start elapsed
+        for zzz in xrange(0, 4):
+            self.class_logger.info('Ascending in: ' + str(3 - zzz))
+            time.sleep(1)
+
         self.running = True
+        self.t.start()
         return
 
     def stop(self):
@@ -73,118 +83,125 @@ class DroneStateMachine:
         return
 
     def update(self):
-        while 1:
-            if self.running is False:
-                break
-
-            # getting the objects seen by camera
-            if self.queue_VS_2_STM.empty():
-                self.compute = False
+        if self.running is True:
+            self.t = Timer(self.interval, self.update, args=())
+            self.t.start()
+        # #########################################################
+        # GET DATA FROM VISION SYSTEM
+        # #########################################################
+        if self.queue_VS_2_STM.empty():
+            self.compute = False
+        else:
+            self.objs = self.queue_VS_2_STM.get()
+            if isinstance(self.objs, list):
+                self.compute = True
+                objCount = len(self.objs)
             else:
-                self.objs = self.queue_VS_2_STM.get()
-                if isinstance(self.objs, list):
-                    self.compute = True
-                    objCount = len(self.objs)
+                self.compute = False
+            self.queue_VS_2_STM.task_done()
+
+        if self.compute and self.queue_connected:
+            # #########################################################
+            # ON THE GROUND STATE
+            # #########################################################
+            if self.state == self.possibleStates['onTheGround']:
+                self.log_state_once(self.state)
+                self.set_state(self.possibleStates['ascending'])
+
+            # #########################################################
+            # ASCENDING
+            # #########################################################
+            elif self.state == self.possibleStates['ascending']:
+                self.log_state_once(self.state)
+
+                # not seeing anything logical
+                if objCount > 3 or objCount < 1:
+                    pass
+
+                # seeing 1 2 or 3 objects
                 else:
-                    self.compute = False
-                self.queue_VS_2_STM.task_done()
+                    if objCount == 1:
+                        self.goalX = self.objs[0]['center'][0]
+                        self.goalY = self.objs[0]['center'][1]
+                    if objCount == 2:
+                        self.goalX = (self.objs[0]['center'][0] +
+                                      self.objs[1]['center'][0]) / 2
+                        self.goalY = (self.objs[0]['center'][1] +
+                                      self.objs[1]['center'][1]) / 2
+                    if objCount == 3:
+                        self.goalX = (self.objs[0]['center'][0] +
+                                      self.objs[1]['center'][0] +
+                                      self.objs[2]['center'][0]) / 3
+                        self.goalY = (self.objs[0]['center'][1] +
+                                      self.objs[1]['center'][1] +
+                                      self.objs[2]['center'][1]) / 3
 
-            if self.compute and self.queue_connected:
-                # #########################################################
-                # ON THE GROUND STATE
-                # #########################################################
-                if self.state == self.possibleStates['onTheGround']:
-                    self.log_state_once(self.state)
+                    self.dx = self.resolution[0] / 2 - self.goalX
+                    self.dy = self.resolution[1] / 2 - self.goalY
 
-                    # if 3 seconds from start elapsed
-                    for zzz in xrange(0, 4):
-                        self.class_logger.info('Ascending in: ' + str(3 - zzz))
-                        time.sleep(1)
+                self.n += 1
 
-                    self.set_state(self.possibleStates['ascending'])
+                if self.n > 20:
+                    self.pwm0 = self.pwm0 + 1
+                    self.n = 0
 
-                # #########################################################
-                # ASCENDING
-                # #########################################################
-                elif self.state == self.possibleStates['ascending']:
-                    self.log_state_once(self.state)
+                if self.pwm0 > 130:
+                    self.pwm0 = 130
 
-                    self.n += 1
+                logText = '{0} - {1}: {2} {3} {4} {5} {6}'.format('Asc',
+                                                                  'objs',
+                                                                  objCount,
+                                                                  'dx',
+                                                                  self.dx,
+                                                                  'dy',
+                                                                  self.dy)
+                self.class_logger.info(logText)
+            # #########################################################
+            # HOVERING ON POINT
+            # #########################################################
+            elif self.state == self.possibleStates['hoveringOnPoint']:
+                self.log_state_once(self.state)
 
-                    if self.n > 200:
-                        self.pwm0 = self.pwm0 + 1
-                        self.n = 0
+            # #########################################################
+            # HOVERING
+            # #########################################################
+            elif self.state == self.possibleStates['hovering']:
+                self.log_state_once(self.state)
 
-                    if self.pwm0 > 150:
-                        self.pwm0 = 150
+            # #########################################################
+            # ROTATING
+            # #########################################################
+            elif self.state == self.possibleStates['rotating']:
+                self.log_state_once(self.state)
 
-                    # not seeing anything logical
-                    if objCount > 3 or objCount < 1:
-                        pass
+            # #########################################################
+            # MOVING TO POINT
+            # #########################################################
+            elif self.state == self.possibleStates['movingToPoint']:
+                self.log_state_once(self.state)
 
-                    # seeing 1 2 or 3 objects
-                    else:
-                        if objCount == 1:
-                            self.dx = self.resolution[0] -self.objs[0]['center'][0]
-                            self.dy = self.resolution[1] - self.objs[0]['center'][1]
-                        if objCount == 2:
-                            self.dx = self.resolution[0] - self.objs[0]['center'][0]
-                            self.dy = self.resolution[1] - self.objs[0]['center'][1]
-                        if objCount == 3:
-                            self.dx = self.resolution[0] - self.objs[0]['center'][0]
-                            self.dy = self.resolution[1] - self.objs[0]['center'][1]
+            # #########################################################
+            # LANDING
+            # #########################################################
+            elif self.state == self.possibleStates['landing']:
+                self.log_state_once(self.state)
 
-                    logText = '{0} - {1}: {2}'.format('Ascending',
-                                                      'nr of objs: ',
-                                                      objCount)
+            # #########################################################
+            # SEND DATA
+            # #########################################################
+            self.values = [int(self.pwm0),
+                           int(self.pwm1),
+                           int(self.pwm2),
+                           int(self.pwm3),
+                           int(self.pwm4),
+                           int(self.pwm5)]
+            valuesHexString = self.build_data_hex_string(self.values)
+            if self.queue_connected and self.queue_STM_MAN_2_SRL.empty():
+                self.queue_STM_MAN_2_SRL.put(valuesHexString)
 
-                    self.class_logger.info(logText)
-
-                # #########################################################
-                # ROTATING
-                # #########################################################
-                elif self.state == self.possibleStates['rotating']:
-                    self.log_state_once(self.state)
-
-                # #########################################################
-                # MOVING TO POINT
-                # #########################################################
-                elif self.state == self.possibleStates['movingToPoint']:
-                    self.log_state_once(self.state)
-
-                # #########################################################
-                # LANDING
-                # #########################################################
-                elif self.state == self.possibleStates['landing']:
-                    self.log_state_once(self.state)
-
-                # #########################################################
-                # HOVERING
-                # #########################################################
-                elif self.state == self.possibleStates['hovering']:
-                    self.log_state_once(self.state)
-
-                # #########################################################
-                # HOVERING ON POINT
-                # #########################################################
-                elif self.state == self.possibleStates['hoveringOnPoint']:
-                    self.log_state_once(self.state)
-
-                # #########################################################
-                # SEND DATA
-                # #########################################################
-                self.values = [int(self.pwm0),
-                               int(self.pwm1),
-                               int(self.pwm2),
-                               int(self.pwm3),
-                               int(self.pwm4),
-                               int(self.pwm5)]
-                valuesHexString = self.build_data_hex_string(self.values)
-                if self.queue_connected:
-                    self.queue_STM_MAN_2_SRL.put(valuesHexString)
-
-        self.log_state_once.has_run = False
-        self.class_logger.info('Ending state machine.')
+        if self.running is False:
+            self.log_state_once.has_run = False
+            self.class_logger.info('Ending state machine.')
 
     def log_state(self, state):
         if state == self.possibleStates['onTheGround']:
