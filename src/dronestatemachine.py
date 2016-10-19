@@ -26,10 +26,24 @@ class DroneStateMachine:
         self.resolution = (320, 240)
         self.n = 0
         self.interval = 0.02
+
         self.dx = 0
         self.dy = 0
+        self.dArea = 0
+        self.area = 0
+
         self.goalX = 0
         self.goalY = 0
+        self.goalArea = (1 / 3) * (self.resolution[0] * self.resolution[1])
+
+        self.KPx = 0
+        self.KPy = 0
+        self.KPa = 0
+        self.KIa = 0
+
+        self.deadZonex = 0
+        self.deadZoney = 0
+        self.deadZonea = 1000
 
         self.log_state_once = self.run_once(self.log_state)
 
@@ -123,11 +137,14 @@ class DroneStateMachine:
                     if objCount == 1:
                         self.goalX = self.objs[0]['center'][0]
                         self.goalY = self.objs[0]['center'][1]
+                        self.area = self.objs[0]['approx_cnt_area']
                     if objCount == 2:
                         self.goalX = (self.objs[0]['center'][0] +
                                       self.objs[1]['center'][0]) / 2
                         self.goalY = (self.objs[0]['center'][1] +
                                       self.objs[1]['center'][1]) / 2
+                        self.area = (self.objs[0]['approx_cnt_area'] +
+                                     self.objs[1]['approx_cnt_area']) / 2
                     if objCount == 3:
                         self.goalX = (self.objs[0]['center'][0] +
                                       self.objs[1]['center'][0] +
@@ -135,14 +152,44 @@ class DroneStateMachine:
                         self.goalY = (self.objs[0]['center'][1] +
                                       self.objs[1]['center'][1] +
                                       self.objs[2]['center'][1]) / 3
+                        self.area = (self.objs[0]['approx_cnt_area'] +
+                                     self.objs[1]['approx_cnt_area'] +
+                                     self.objs[2]['approx_cnt_area']) / 3
 
                     self.dx = self.resolution[0] / 2 - self.goalX
                     self.dy = self.resolution[1] / 2 - self.goalY
+                    self.dArea = self.area - self.goalArea
+
+                    self.deadZonex = 10
+                    self.deadZoney = 10
+                    self.KPx = 0.1000
+                    self.KPy = 0.1360
+                    self.KPa = 0.0003
+
+                    if self.dy > 0:
+                        self.pwm2 = self.pwm2 - self.KPy * (self.dy - self.deadZoney)
+                    elif self.dy < 0:
+                        self.pwm2 = self.pwm2 - self.KPy * (self.dy + self.deadZoney)
+
+                    if self.dx > 0:
+                        self.pwm3 = self.pwm3 - self.KPx * (self.dx - self.deadZonex)
+                    elif self.dx < 0:
+                        self.pwm3 = self.pwm3 - self.KPx * (self.dx + self.deadZonex)
+
+                    if self.dy > -10 and self.dy < 10:
+                        self.pwm2 = 150
+
+                    if self.dx > -10 and self.dx < 10:
+                        self.pwm3 = 150
+
 
                 self.n += 1
 
                 if self.n > 20:
-                    self.pwm0 = self.pwm0 + 1
+                    if self.dx > 0:
+                        self.pwm0 = self.pwm0 + self.KPa * (self.dArea - self.deadZonea)
+                    elif self.dx < 0:
+                        self.pwm0 = self.pwm0 + self.KPa * (self.dArea + self.deadZonea)
                     self.n = 0
 
                 if self.pwm0 > 130:
@@ -196,7 +243,7 @@ class DroneStateMachine:
                            int(self.pwm4),
                            int(self.pwm5)]
             valuesHexString = self.build_data_hex_string(self.values)
-            if self.queue_connected and self.queue_STM_MAN_2_SRL.empty():
+            if self.queue_connected:
                 self.queue_STM_MAN_2_SRL.put(valuesHexString)
 
         if self.running is False:
