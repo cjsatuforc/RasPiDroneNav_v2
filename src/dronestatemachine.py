@@ -298,6 +298,8 @@ class DroneStateMachine:
         return
 
     def build_data_hex_string(self, valueList):
+        for index, v in enumerate(valueList):
+            valueList[index] = max(min(v, 200), 100)
         valueList.insert(0, 0xAA)  # add preamble
         s = array.array('B', valueList).tostring()
         return s
