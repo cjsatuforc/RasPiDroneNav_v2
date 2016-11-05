@@ -167,21 +167,20 @@ class DroneStateMachine:
                     self.KPa = 0.0003
 
                     if self.dy > 0:
-                        self.pwm2 = self.pwm2 - self.KPy * (self.dy - self.deadZoney)
+                        self.pwm2 = 150 - self.KPy * (self.dy - self.deadZoney)
                     elif self.dy < 0:
-                        self.pwm2 = self.pwm2 - self.KPy * (self.dy + self.deadZoney)
+                        self.pwm2 = 150 - self.KPy * (self.dy + self.deadZoney)
 
                     if self.dx > 0:
-                        self.pwm3 = self.pwm3 - self.KPx * (self.dx - self.deadZonex)
+                        self.pwm3 = 150 - self.KPx * (self.dx - self.deadZonex)
                     elif self.dx < 0:
-                        self.pwm3 = self.pwm3 - self.KPx * (self.dx + self.deadZonex)
+                        self.pwm3 = 150 - self.KPx * (self.dx + self.deadZonex)
 
                     if self.dy > -10 and self.dy < 10:
                         self.pwm2 = 150
 
                     if self.dx > -10 and self.dx < 10:
                         self.pwm3 = 150
-
 
                 self.n += 1
 
