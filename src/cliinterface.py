@@ -216,7 +216,7 @@ class CliInterface:
         wmove(self.window, 10, 1)
         waddstr(self.window,
                 '{0:<34}{1} : {2:>3}'.format('Erode',
-                                             '<a,z>',
+                                             '<s,x>',
                                              self.settings['erodeValue']))
 
         wmove(self.window, 12, 1)
@@ -236,8 +236,9 @@ class CliInterface:
 
         wmove(self.window, 16, 1)
         waddstr(self.window,
-                '{0:<36}{1}'.format('Auto mode',
-                                    self.settings['autoMode']))
+                '{0:<36}{1} : {2}'.format('Auto mode',
+                                          '<m>',
+                                          self.settings['autoMode']))
 
         wmove(self.window, 17, 1)
         waddstr(self.window,
