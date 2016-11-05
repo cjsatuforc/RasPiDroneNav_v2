@@ -242,7 +242,8 @@ class CliInterface:
 
         wmove(self.window, 17, 1)
         waddstr(self.window,
-                '{0:<36}{1}'.format('Display goal',
+                '{0:<36}{1} : {2}'.format('Display goal',
+                                    '<n>',
                                     self.settings['dispGoal']))
 
     def initConfig(self, cfg, path, setts):
