@@ -163,7 +163,7 @@ class CliInterface:
         wclear(self.window)
         box(self.window)
         wmove(self.window, 0, 1)
-        waddstr(self.window, 'Drone navigation - vision based.\n', A_BOLD)
+        waddstr(self.window, '{0:<36}'.format('Parameters of the vision processing'), A_BOLD)
         wmove(self.window, 1, 1)
         waddstr(self.window, '\n')
         wmove(self.window, 2, 1)
