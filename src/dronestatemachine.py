@@ -9,10 +9,16 @@ import time
 
 class DroneStateMachine:
     def __init__(self, q1, q2):
-        self.possibleStates = {'onTheGround': 0, 'ascending': 1,
-                               'rotating': 2, 'movingToPoint': 3,
-                               'landing': 4, 'hovering': 5,
-                               'hoveringOnPoint': 6, 'dummy': 99}
+        self.possibleStates = {'onTheGround':          0,
+                               'ascending':            1,
+                               'rotating':             2,
+                               'movingToPoint':        3,
+                               'landing':              4,
+                               'hovering':             5,
+                               'hoveringOnPoint':      6,
+                               'hoveringOnPointNoAlt': 7,
+                               'dummy':                99
+                               }
         self.state = self.possibleStates['dummy']
         self.running = True
         self.autoMode = False
@@ -272,13 +278,16 @@ class DroneStateMachine:
         return [self.pwm0, self.pwm1, self.pwm2,
                 self.pwm3, self.pwm4, self.pwm5]
 
-    def write(self, values_list):
-        self.pwm0 = values_list[0]
-        self.pwm1 = values_list[1]
-        self.pwm2 = values_list[2]
-        self.pwm3 = values_list[3]
-        self.pwm4 = values_list[4]
-        self.pwm5 = values_list[5]
+    def write(self, values_list, onlyThrottle):
+        if onlyThrottle is True:
+            self.pwm0 = values_list[0]
+        elif onlyThrottle is False:
+            self.pwm0 = values_list[0]
+            self.pwm1 = values_list[1]
+            self.pwm2 = values_list[2]
+            self.pwm3 = values_list[3]
+            self.pwm4 = values_list[4]
+            self.pwm5 = values_list[5]
         return
 
     def set_mode(self, mode):

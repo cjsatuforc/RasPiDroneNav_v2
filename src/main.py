@@ -98,11 +98,11 @@ def main():
         queue_MAIN_2_VS.put(settings)
 
         if autoModePrev is False and settings['autoMode'] is True:
-            drone_stm.write(man_ctrl.read())
+            drone_stm.write(man_ctrl.read(), False)
             man_ctrl.connect_queue(False)
             drone_stm.connect_queue(True)
         elif autoModePrev is True and settings['autoMode'] is False:
-            man_ctrl.write(drone_stm.read())
+            man_ctrl.write(drone_stm.read(), True)
             drone_stm.connect_queue(False)
             man_ctrl.connect_queue(True)
 
