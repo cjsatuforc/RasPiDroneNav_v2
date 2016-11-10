@@ -26,7 +26,8 @@ class VisionSystem:
         self.queue_MAIN_2_VS = q1
         self.queue_VS_2_STM = q2
         self.resolution = (320, 240)
-        self.video_stream = PiVideoStream(self.resolution, 60)
+        self.colorspace = 'yuv'
+        self.video_stream = PiVideoStream(self.resolution, 60, self.colorspace)
 
         self.settings = {'disp': False, 'dispThresh': False,
                          'dispContours': False, 'dispApproxContours': False,
@@ -45,7 +46,6 @@ class VisionSystem:
         self.working = True
         self.t = Thread(target=self.update, args=())
         self.t.daemon = True
-
 
     def start(self):
         self.classLogger.debug('Starting vision system.')
@@ -121,8 +121,12 @@ class VisionSystem:
         # frame = cv2.copyMakeBorder(frame, 3, 3, 3, 3,
         #                            cv2.BORDER_CONSTANT,
         #                            value=(255, 255, 255))
-        frameGray = cv2.cvtColor(fr, cv2.COLOR_BGR2GRAY)
-        frameBlurred = cv2.GaussianBlur(frameGray, (7, 7), 0)
+        if self.colorspace == 'rgb':
+            frameGray = cv2.cvtColor(fr, cv2.COLOR_BGR2GRAY)
+            frameBlurred = cv2.GaussianBlur(frameGray, (7, 7), 0)
+        else:
+            frameBlurred = cv2.GaussianBlur(fr, (7, 7), 0)
+
         frameThresh = cv2.threshold(frameBlurred, setts['lowerThresh'], 255,
                                     cv2.THRESH_BINARY_INV)[1]
         frameThresh = cv2.erode(frameThresh, None,
@@ -166,6 +170,10 @@ class VisionSystem:
         approximated area.
         :rtype: dictionary.
         """
+
+        # hack to circumvent opencv error
+        if self.colorspace == 'yuv':
+            frameOriginal = frameOriginal.copy()
 
         # #####################################################################
         # FIND COUNTOURS

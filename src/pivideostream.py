@@ -4,7 +4,8 @@
 
 # import the necessary packages
 import time
-from picamera.array import PiRGBArray
+import numpy as np
+from picamera.array import PiRGBArray, PiYUVArray
 from picamera import PiCamera
 from threading import Thread
 import signal
@@ -12,15 +13,24 @@ import signal
 
 
 class PiVideoStream:
-    def __init__(self, resolution=(320, 240), framerate=30):
+    def __init__(self, resolution=(320, 240), framerate=30, colorspace='yuv'):
         # initialize the camera and stream
         self.camera = PiCamera()
         self.camera.resolution = resolution
         self.camera.framerate = framerate
-        self.rawCapture = PiRGBArray(self.camera, size=resolution)
-        self.stream = self.camera.capture_continuous(self.rawCapture,
-                                                     format="bgr",
-                                                     use_video_port=True)
+        self.colorspace = colorspace
+
+        if self.colorspace == 'yuv':
+            self.rawCapture = PiYUVArray(self.camera, size=resolution)
+            self.y_data = np.empty(resolution, dtype=np.uint8)
+            self.stream = self.camera.capture_continuous(self.rawCapture,
+                                                         format="yuv",
+                                                         use_video_port=True)
+        elif self.colorspace == 'rgb':
+            self.rawCapture = PiRGBArray(self.camera, size=resolution)
+            self.stream = self.camera.capture_continuous(self.rawCapture,
+                                                         format="bgr",
+                                                         use_video_port=True)
 
         # initialize the frame and the variable used to indicate
         # if the thread should be stopped
@@ -44,8 +54,11 @@ class PiVideoStream:
             self.startTime = time.time()
             # grab the frame from the stream and clear the stream in
             # preparation for the next frame
-            self.frame = f.array
+            self.f = f.array
             self.rawCapture.truncate(0)
+
+            if self.colorspace == 'yuv':
+                self.y_data = np.dsplit(f.array, 3)[0]
 
             # if the thread indicator variable is set, stop the thread
             # and resource camera resources
@@ -60,7 +73,10 @@ class PiVideoStream:
 
     def read(self):
         # return the frame most recently read
-        return self.frame
+        if self.colorspace == 'yuv':
+            return self.y_data
+        else:
+            return self.frame
 
     def stop(self):
         # indicate that the thread should be stopped
