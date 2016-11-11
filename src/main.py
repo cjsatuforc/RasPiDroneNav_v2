@@ -22,12 +22,19 @@ from serialcom import SerialCom
 from manualcontrol import ManualControl
 
 stopped = False
-settings = {'disp': False, 'dispThresh': False,
-            'dispContours': False, 'dispApproxContours': False,
-            'dispVertices': False, 'dispNames': False,
-            'dispCenters': False, 'dispTHEcenter': False,
-            'erodeValue': 0, 'lowerThresh': 40, 'working': True,
-            'autoMode': False, 'dispGoal': True}
+settings = {'disp': False,
+            'dispThresh': False,
+            'dispContours': False,
+            'dispApproxContours': False,
+            'dispVertices': False,
+            'dispNames': False,
+            'dispCenters': False,
+            'dispTHEcenter': False,
+            'erodeValue': 0,
+            'lowerThresh': 40,
+            'working': True,
+            'autoMode': False,
+            'dispGoal': True}
 
 
 def main():
@@ -98,11 +105,11 @@ def main():
         queue_MAIN_2_VS.put(settings)
 
         if autoModePrev is False and settings['autoMode'] is True:
-            drone_stm.write(man_ctrl.read())
+            drone_stm.write(man_ctrl.read(), 'all')
             man_ctrl.connect_queue(False)
             drone_stm.connect_queue(True)
         elif autoModePrev is True and settings['autoMode'] is False:
-            man_ctrl.write(drone_stm.read())
+            man_ctrl.write(drone_stm.read(), 't')
             drone_stm.connect_queue(False)
             man_ctrl.connect_queue(True)
 

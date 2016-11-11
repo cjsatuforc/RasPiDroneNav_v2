@@ -26,12 +26,19 @@ class CliInterface:
         self.running = True
         self.keyPressed = 0
 
-        self.settings = {'disp': False, 'dispThresh': False,
-                         'dispContours': False, 'dispApproxContours': False,
-                         'dispVertices': False, 'dispNames': False,
-                         'dispCenters': False, 'dispTHEcenter': False,
-                         'erodeValue': 0, 'lowerThresh': 40, 'working': True,
-                         'autoMode': False, 'dispGoal': True}
+        self.settings = {'disp': False,
+                         'dispThresh': False,
+                         'dispContours': False,
+                         'dispApproxContours': False,
+                         'dispVertices': False,
+                         'dispNames': False,
+                         'dispCenters': False,
+                         'dispTHEcenter': False,
+                         'erodeValue': 0,
+                         'lowerThresh': 40,
+                         'working': True,
+                         'autoMode': False,
+                         'dispGoal': True}
 
         # configuration parser
         self.main_dir = main_dir

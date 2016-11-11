@@ -9,10 +9,14 @@ import time
 
 class DroneStateMachine:
     def __init__(self, q1, q2):
-        self.possibleStates = {'onTheGround': 0, 'ascending': 1,
-                               'rotating': 2, 'movingToPoint': 3,
-                               'landing': 4, 'hovering': 5,
-                               'hoveringOnPoint': 6, 'dummy': 99}
+        self.possibleStates = {'onTheGround': 0,
+                               'ascending': 1,
+                               'rotating': 2,
+                               'movingToPoint': 3,
+                               'landing': 4,
+                               'hovering': 5,
+                               'hoveringOnPoint': 6,
+                               'dummy': 99}
         self.state = self.possibleStates['dummy']
         self.running = True
         self.autoMode = False
@@ -26,6 +30,8 @@ class DroneStateMachine:
         self.resolution = (320, 240)
         self.n = 0
         self.interval = 0.02
+        self.trust = 0
+        self.timeout = 0
 
         self.dx = 0
         self.dy = 0
@@ -34,7 +40,7 @@ class DroneStateMachine:
 
         self.goalX = 0
         self.goalY = 0
-        self.goalArea = (1 / 3) * (self.resolution[0] * self.resolution[1])
+        self.goalArea = (0.1) * (self.resolution[0] * self.resolution[1])
 
         self.KPx = 0
         self.KPy = 0
@@ -120,12 +126,47 @@ class DroneStateMachine:
             # #########################################################
             if self.state == self.possibleStates['onTheGround']:
                 self.log_state_once(self.state)
+
                 self.set_state(self.possibleStates['ascending'])
 
             # #########################################################
             # ASCENDING
             # #########################################################
             elif self.state == self.possibleStates['ascending']:
+                self.log_state_once(self.state)
+                self.set_state(self.possibleStates['hoveringOnPoint'])
+
+                # ascend
+                self.n += 1
+
+                if self.n > 4:
+                    self.pwm0 = self.pwm0 + 2
+                    self.n = 0
+
+                if self.pwm0 > 130:
+                    self.pwm0 = 130
+
+                # enough trust to change state
+                if objCount == 1:
+                    if self.objs[0]['shape'] == 'circle':
+                        self.trust += 4
+                else:
+                    self.trust -= 1
+
+                # timeout waiting for state change
+                self.timeout += 1
+
+                if self.timeout > 100:
+                    self.set_state(self.possibleStates['landing'])
+
+                if self.trust > 40:
+                    self.trust = 0
+                    self.set_state(self.possibleStates['hoveringOnPoint'])
+
+            # #########################################################
+            # HOVERING ON POINT
+            # #########################################################
+            elif self.state == self.possibleStates['hoveringOnPoint']:
                 self.log_state_once(self.state)
 
                 # not seeing anything logical
@@ -182,31 +223,30 @@ class DroneStateMachine:
                     if self.dx > -10 and self.dx < 10:
                         self.pwm3 = 150
 
-                self.n += 1
+                # self.n += 1
 
-                if self.n > 20:
-                    if self.dx > 0:
-                        self.pwm0 = self.pwm0 + self.KPa * (self.dArea - self.deadZonea)
-                    elif self.dx < 0:
-                        self.pwm0 = self.pwm0 + self.KPa * (self.dArea + self.deadZonea)
-                    self.n = 0
+                # if self.n > 20:
+                if self.dArea > 0:
+                    self.pwm0 = self.pwm0 + self.KPa * (self.dArea)  # - self.deadZonea)
+                elif self.dArea < 0:
+                    self.pwm0 = self.pwm0 - self.KPa * (self.dArea)  # + self.deadZonea)
+                    # self.n = 0
 
                 if self.pwm0 > 130:
                     self.pwm0 = 130
+                if self.pwm0 < 100:
+                    self.pwm0 = 100
 
-                logText = '{0} - {1}: {2} {3} {4} {5} {6}'.format('Asc',
+                logText = '{0} - {1}: {2} {3} {4} {5} {6} {7} {8}'.format('Asc',
                                                                   'objs',
                                                                   objCount,
                                                                   'dx',
                                                                   self.dx,
                                                                   'dy',
-                                                                  self.dy)
+                                                                  self.dy,
+                                                                  'dArea',
+                                                                  self.dArea)
                 self.class_logger.info(logText)
-            # #########################################################
-            # HOVERING ON POINT
-            # #########################################################
-            elif self.state == self.possibleStates['hoveringOnPoint']:
-                self.log_state_once(self.state)
 
             # #########################################################
             # HOVERING
@@ -231,6 +271,15 @@ class DroneStateMachine:
             # #########################################################
             elif self.state == self.possibleStates['landing']:
                 self.log_state_once(self.state)
+
+                self.n += 1
+
+                if self.n > 4:
+                    self.pwm0 = self.pwm0 - 1
+                    self.n = 0
+
+                if self.pwm0 < 100:
+                    self.pwm0 = 100
 
             # #########################################################
             # SEND DATA
@@ -272,13 +321,21 @@ class DroneStateMachine:
         return [self.pwm0, self.pwm1, self.pwm2,
                 self.pwm3, self.pwm4, self.pwm5]
 
-    def write(self, values_list):
-        self.pwm0 = values_list[0]
-        self.pwm1 = values_list[1]
-        self.pwm2 = values_list[2]
-        self.pwm3 = values_list[3]
-        self.pwm4 = values_list[4]
-        self.pwm5 = values_list[5]
+    def write(self, values_list, which):
+        if which == 't':
+            self.pwm0 = values_list[0]
+            self.pwm1 = 150
+            self.pwm2 = 150
+            self.pwm3 = 150
+            self.pwm4 = 150
+            self.pwm5 = 150
+        elif which == 'all':
+            self.pwm0 = values_list[0]
+            self.pwm1 = values_list[1]
+            self.pwm2 = values_list[2]
+            self.pwm3 = values_list[3]
+            self.pwm4 = values_list[4]
+            self.pwm5 = values_list[5]
         return
 
     def set_mode(self, mode):

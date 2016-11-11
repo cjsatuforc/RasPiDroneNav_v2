@@ -31,12 +31,19 @@ class VisionSystem:
                                           resolution=self.resolution,
                                           framerate=60)
 
-        self.settings = {'disp': False, 'dispThresh': False,
-                         'dispContours': False, 'dispApproxContours': False,
-                         'dispVertices': False, 'dispNames': False,
-                         'dispCenters': False, 'dispTHEcenter': False,
-                         'erodeValue': 0, 'lowerThresh': 40, 'working': True,
-                         'autoMode': False, 'dispGoal': True}
+        self.settings = {'disp': False,
+                         'dispThresh': False,
+                         'dispContours': False,
+                         'dispApproxContours': False,
+                         'dispVertices': False,
+                         'dispNames': False,
+                         'dispCenters': False,
+                         'dispTHEcenter': False,
+                         'erodeValue': 0,
+                         'lowerThresh': 40,
+                         'working': True,
+                         'autoMode': False,
+                         'dispGoal': True}
 
         self.prevStateDisp = self.settings['disp']
         self.prevStateDispThresh = self.settings['dispThresh']

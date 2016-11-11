@@ -87,13 +87,21 @@ class ManualControl(object):
         return [self.pwm0, self.pwm1, self.pwm2,
                 self.pwm3, self.pwm4, self.pwm5]
 
-    def write(self, values_list):
-        self.pwm0 = values_list[0]
-        self.pwm1 = values_list[1]
-        self.pwm2 = values_list[2]
-        self.pwm3 = values_list[3]
-        self.pwm4 = values_list[4]
-        self.pwm5 = values_list[5]
+    def write(self, values_list, which):
+        if which == 't':
+            self.pwm0 = values_list[0]
+            self.pwm1 = 150
+            self.pwm2 = 150
+            self.pwm3 = 150
+            self.pwm4 = 150
+            self.pwm5 = 150
+        elif which == 'all':
+            self.pwm0 = values_list[0]
+            self.pwm1 = values_list[1]
+            self.pwm2 = values_list[2]
+            self.pwm3 = values_list[3]
+            self.pwm4 = values_list[4]
+            self.pwm5 = values_list[5]
         return
 
     def handle_input(self, events):
@@ -130,6 +138,11 @@ class ManualControl(object):
             # safety switch - throttle full down
             if event.type == pygame.KEYDOWN and event.key == pygame.K_x:
                 self.pwm0 = 100
+                self.pwm1 = 150
+                self.pwm2 = 150
+                self.pwm3 = 150
+                self.pwm4 = 150
+                self.pwm5 = 150
 
             # rest of dofs
             if event.type == pygame.KEYDOWN and event.key == pygame.K_s:
