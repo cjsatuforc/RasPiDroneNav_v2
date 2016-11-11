@@ -27,7 +27,9 @@ class VisionSystem:
         self.queue_VS_2_STM = q2
         self.resolution = (320, 240)
         self.colorspace = 'yuv'
-        self.video_stream = PiVideoStream(self.resolution, 60, self.colorspace)
+        self.video_stream = PiVideoStream(streamColorSpace=self.colorspace,
+                                          resolution=self.resolution,
+                                          framerate=60)
 
         self.settings = {'disp': False, 'dispThresh': False,
                          'dispContours': False, 'dispApproxContours': False,
@@ -286,8 +288,9 @@ class VisionSystem:
 
 if __name__ == "__main__":
     try:
-        q = Queue.Queue()
-        vs = VisionSystem(q)
+        q1 = Queue.Queue()
+        q2 = Queue.Queue()
+        vs = VisionSystem(q1, q2)
         vs.start()
         # pauses main thread in this place so it can catch
         # exceptions; otherwise try/except just ends and thread
@@ -297,5 +300,5 @@ if __name__ == "__main__":
         vs.stop()
         print('Keyboard Interrupt')
     except Exception as e:
-        vs.stop()
         print(e)
+        vs.stop()

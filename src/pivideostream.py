@@ -13,23 +13,23 @@ import signal
 
 
 class PiVideoStream:
-    def __init__(self, resolution=(320, 240), framerate=30, colorspace='yuv'):
+    def __init__(self, streamColorSpace, resolution=(320, 240), framerate=30):
         # initialize the camera and stream
         self.camera = PiCamera()
         self.camera.resolution = resolution
         self.camera.framerate = framerate
-        self.colorspace = colorspace
+        self.streamColorSpace = streamColorSpace
 
-        if self.colorspace == 'yuv':
+        if self.streamColorSpace == 'yuv':
             self.rawCapture = PiYUVArray(self.camera, size=resolution)
             self.y_data = np.empty(resolution, dtype=np.uint8)
             self.stream = self.camera.capture_continuous(self.rawCapture,
-                                                         format="yuv",
+                                                         format='yuv',
                                                          use_video_port=True)
-        elif self.colorspace == 'rgb':
+        elif self.streamColorSpace == 'rgb':
             self.rawCapture = PiRGBArray(self.camera, size=resolution)
             self.stream = self.camera.capture_continuous(self.rawCapture,
-                                                         format="bgr",
+                                                         format='bgr',
                                                          use_video_port=True)
 
         # initialize the frame and the variable used to indicate
@@ -57,7 +57,7 @@ class PiVideoStream:
             self.f = f.array
             self.rawCapture.truncate(0)
 
-            if self.colorspace == 'yuv':
+            if self.streamColorSpace == 'yuv':
                 self.y_data = np.dsplit(f.array, 3)[0]
 
             # if the thread indicator variable is set, stop the thread
@@ -73,7 +73,7 @@ class PiVideoStream:
 
     def read(self):
         # return the frame most recently read
-        if self.colorspace == 'yuv':
+        if self.streamColorSpace == 'yuv':
             return self.y_data
         else:
             return self.frame
@@ -86,7 +86,7 @@ class PiVideoStream:
 
 if __name__ == "__main__":
     try:
-        pvs = PiVideoStream()
+        pvs = PiVideoStream('rgb')
         pvs.start()
         # pauses main thread in this place so it can catch
         # exceptions; otherwise try/except just ends and thread
