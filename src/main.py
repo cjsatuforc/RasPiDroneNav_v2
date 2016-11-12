@@ -85,7 +85,6 @@ def main():
     cli.start()
     vis_sys.start()
     serial_port.start()
-    drone_stm.start()
     man_ctrl.start()
     man_ctrl.connect_queue(True)
 
@@ -108,10 +107,12 @@ def main():
             drone_stm.write(man_ctrl.read(), 'all')
             man_ctrl.connect_queue(False)
             drone_stm.connect_queue(True)
+            drone_stm.start()
         elif autoModePrev is True and settings['autoMode'] is False:
             man_ctrl.write(drone_stm.read(), 't')
             drone_stm.connect_queue(False)
             man_ctrl.connect_queue(True)
+            drone_stm.stop()
 
         autoModePrev = settings['autoMode']
 

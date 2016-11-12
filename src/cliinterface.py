@@ -277,7 +277,8 @@ class CliInterface:
     def readConfig(self, cfg, path, setts):
         if self.configExists:
             self.class_logger.debug('Reading config file.')
-            cfg.read('config.ini')
+            configFile = open(path, 'r')
+            cfg.read(configFile)
 
             setts['dispThresh']    = cfg.getboolean('VisionParams', 'dispThresh')
             setts['dispContours']  = cfg.getboolean('VisionParams', 'dispContours')

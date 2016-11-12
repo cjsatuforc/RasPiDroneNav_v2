@@ -77,29 +77,26 @@ class DroneStateMachine:
         # logging
         self.class_logger = logging.getLogger('droneNav.StateMachine')
 
-        self.t = Timer(self.interval, self.update, args=())
+        self.t = None
         # self.t = Thread(target=self.update, args=())
         # self.t.daemon = True
 
     def start(self):
-        self.class_logger.info('Starting state machine.')
-        self.set_state(self.possibleStates['onTheGround'])
+        if self.t is None:
+            self.class_logger.info('Starting state machine.')
+            self.set_state(self.possibleStates['onTheGround'])
 
-        # self.t = Thread(target=self.update, args=())
-        self.t = Timer(self.interval, self.update, args=())
+            # self.t = Thread(target=self.update, args=())
+            self.t = Timer(self.interval, self.update, args=())
 
-        # if 3 seconds from start elapsed
-        for zzz in xrange(0, 4):
-            self.class_logger.info('Ascending in: ' + str(3 - zzz))
-            time.sleep(1)
-
-        self.running = True
-        self.t.start()
+            self.running = True
+            self.t.start()
         return
 
     def stop(self):
-        self.running = False
-        self.t.join()
+        if self.t is not None:
+            self.running = False
+            self.t.join()
         return
 
     def update(self):
@@ -127,14 +124,23 @@ class DroneStateMachine:
             if self.state == self.possibleStates['onTheGround']:
                 self.log_state_once(self.state)
 
-                self.set_state(self.possibleStates['ascending'])
+                logText = '{0} - {1}: {2}'.format('OtG',
+                                                  'count to 200',
+                                                  self.timeout)
+
+                self.class_logger.info(logText)
+
+                self.timeout += 1
+
+                if self.timeout > 200:
+                    self.set_state(self.possibleStates['ascending'])
+                    self.timeout = 0
 
             # #########################################################
             # ASCENDING
             # #########################################################
             elif self.state == self.possibleStates['ascending']:
                 self.log_state_once(self.state)
-                self.set_state(self.possibleStates['hoveringOnPoint'])
 
                 # ascend
                 self.n += 1
@@ -153,15 +159,16 @@ class DroneStateMachine:
                 else:
                     self.trust -= 1
 
+                if self.trust > 40:
+                    self.trust = 0
+                    self.set_state(self.possibleStates['hoveringOnPoint'])
+
                 # timeout waiting for state change
                 self.timeout += 1
 
                 if self.timeout > 100:
                     self.set_state(self.possibleStates['landing'])
-
-                if self.trust > 40:
-                    self.trust = 0
-                    self.set_state(self.possibleStates['hoveringOnPoint'])
+                    self.timeout = 0
 
             # #########################################################
             # HOVERING ON POINT
@@ -199,6 +206,11 @@ class DroneStateMachine:
 
                     self.dx = self.resolution[0] / 2 - self.goalX
                     self.dy = self.resolution[1] / 2 - self.goalY
+
+                    # change the goal area for this state
+                    self.goalArea = (0.03) * (self.resolution[0] * self.resolution[1])
+
+                    # compute the diff. between the is and what is the goal
                     self.dArea = self.area - self.goalArea
 
                     self.deadZonex = 10
@@ -226,10 +238,10 @@ class DroneStateMachine:
                 # self.n += 1
 
                 # if self.n > 20:
-                if self.dArea > 0:
-                    self.pwm0 = self.pwm0 + self.KPa * (self.dArea)  # - self.deadZonea)
-                elif self.dArea < 0:
-                    self.pwm0 = self.pwm0 - self.KPa * (self.dArea)  # + self.deadZonea)
+                # if self.dArea > 0:
+                self.pwm0 = self.pwm0 + self.KPa * (self.dArea)  # - self.deadZonea)
+                # elif self.dArea < 0:
+                    # self.pwm0 = self.pwm0 - self.KPa * (self.dArea)  # + self.deadZonea)
                     # self.n = 0
 
                 if self.pwm0 > 130:
@@ -237,7 +249,7 @@ class DroneStateMachine:
                 if self.pwm0 < 100:
                     self.pwm0 = 100
 
-                logText = '{0} - {1}: {2} {3} {4} {5} {6} {7} {8}'.format('Asc',
+                logText = '{0} - {1}: {2} {3} {4} {5} {6} {7} {8}'.format('HoP',
                                                                   'objs',
                                                                   objCount,
                                                                   'dx',
@@ -297,6 +309,7 @@ class DroneStateMachine:
         if self.running is False:
             self.log_state_once.has_run = False
             self.class_logger.info('Ending state machine.')
+            self.t = None
 
     def log_state(self, state):
         if state == self.possibleStates['onTheGround']:
