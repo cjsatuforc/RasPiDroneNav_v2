@@ -13,7 +13,6 @@ class SerialCom():
         self.running = True
         self.numericals = []
         self.queueSRL = q
-        self.data = 'a\n'
 
         self.classLogger = logging.getLogger('droneNav.SerialCom')
         self.valuesLogger = logging.getLogger('serialCom.SerialCom')
@@ -47,20 +46,37 @@ class SerialCom():
         return
 
     def update(self):
+        data = [170, 100, 150, 150, 150, 150, 150]
+        dataPrev = list(data)
+        dataChange = True
+
         while 1:
             if self.running is False:
                 break
 
+            # if there is no data in queue just jump to next iter
             if self.queueSRL.empty():
                 continue
+            # if theres is data in queue try to send and log it
             if not self.queueSRL.empty():
-                self.data = self.queueSRL.get()
+                data = self.queueSRL.get()
                 self.queueSRL.task_done()
-                try:
-                    self.SP.write(self.data)
-                except:
-                    continue
 
+                if data == dataPrev:
+                    dataChange = False
+                else:
+                    dataChange = True
+
+                if dataChange:
+                    try:
+                        self.SP.write(self.data)
+                    except:
+                        continue
+
+                # remember previous data
+                dataPrev = list(data)
+
+                # log the values
                 try:
                     logText = '{0}:{1}:{2}:{3}:{4}:{5}:{6}'.format(ord(self.data[0]),
                                                                    ord(self.data[1]),
@@ -71,7 +87,6 @@ class SerialCom():
                                                                    ord(self.data[6])
                                                                    )
                     self.valuesLogger.info(logText)
-                    pass
                 except:
                     pass
 

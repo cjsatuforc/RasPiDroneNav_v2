@@ -15,19 +15,24 @@ import signal
 class PiVideoStream:
     def __init__(self, streamColorSpace, resolution=(320, 240), framerate=30):
         # initialize the camera and stream
+        # camera is an iterface for hardware camera
         self.camera = PiCamera()
         self.camera.resolution = resolution
         self.camera.framerate = framerate
         self.streamColorSpace = streamColorSpace
 
         if self.streamColorSpace == 'yuv':
+            # rawCapture is an array
             self.rawCapture = PiYUVArray(self.camera, size=resolution)
             self.y_data = np.empty(resolution, dtype=np.uint8)
+            # capture_continuous returns infinite iterator
             self.stream = self.camera.capture_continuous(self.rawCapture,
                                                          format='yuv',
                                                          use_video_port=True)
         elif self.streamColorSpace == 'rgb':
+            # rawCapture is an array
             self.rawCapture = PiRGBArray(self.camera, size=resolution)
+            # capture_continuous returns infinite iterator
             self.stream = self.camera.capture_continuous(self.rawCapture,
                                                          format='bgr',
                                                          use_video_port=True)
