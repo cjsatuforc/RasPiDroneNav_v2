@@ -69,7 +69,7 @@ class SerialCom():
 
                 if dataChange:
                     try:
-                        self.SP.write(self.data)
+                        self.SP.write(data)
                     except:
                         continue
 
@@ -78,13 +78,13 @@ class SerialCom():
 
                 # log the values
                 try:
-                    logText = '{0}:{1}:{2}:{3}:{4}:{5}:{6}'.format(ord(self.data[0]),
-                                                                   ord(self.data[1]),
-                                                                   ord(self.data[2]),
-                                                                   ord(self.data[3]),
-                                                                   ord(self.data[4]),
-                                                                   ord(self.data[5]),
-                                                                   ord(self.data[6])
+                    logText = '{0}:{1}:{2}:{3}:{4}:{5}:{6}'.format(ord(data[0]),
+                                                                   ord(data[1]),
+                                                                   ord(data[2]),
+                                                                   ord(data[3]),
+                                                                   ord(data[4]),
+                                                                   ord(data[5]),
+                                                                   ord(data[6])
                                                                    )
                     self.valuesLogger.info(logText)
                 except:

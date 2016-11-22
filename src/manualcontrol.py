@@ -88,7 +88,14 @@ class ManualControl(object):
                 self.pwm3, self.pwm4, self.pwm5]
 
     def write(self, values_list, which):
-        if which == 't':
+        if which == 'n':
+            self.pwm0 = 100
+            self.pwm1 = 150
+            self.pwm2 = 150
+            self.pwm3 = 150
+            self.pwm4 = 150
+            self.pwm5 = 150
+        elif which == 't':
             self.pwm0 = values_list[0]
             self.pwm1 = 150
             self.pwm2 = 150

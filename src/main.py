@@ -109,7 +109,7 @@ def main():
             drone_stm.connect_queue(True)
             drone_stm.start()
         elif autoModePrev is True and settings['autoMode'] is False:
-            man_ctrl.write(drone_stm.read(), 't')
+            man_ctrl.write(drone_stm.read(), 'n')
             drone_stm.connect_queue(False)
             man_ctrl.connect_queue(True)
             drone_stm.stop()

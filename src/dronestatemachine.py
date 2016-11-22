@@ -132,7 +132,7 @@ class DroneStateMachine:
 
                 self.timeout += 1
 
-                if self.timeout > 200:
+                if self.timeout > 100:
                     self.set_state(self.possibleStates['ascending'])
                     self.timeout = 0
 
@@ -146,7 +146,7 @@ class DroneStateMachine:
                 self.n += 1
 
                 if self.n > 4:
-                    self.pwm0 = self.pwm0 + 2
+                    self.pwm0 = self.pwm0 + 1
                     self.n = 0
 
                 if self.pwm0 > 130:
@@ -159,14 +159,14 @@ class DroneStateMachine:
                 else:
                     self.trust -= 1
 
-                if self.trust > 40:
+                if self.trust > 10:
                     self.trust = 0
                     self.set_state(self.possibleStates['hoveringOnPoint'])
 
                 # timeout waiting for state change
                 self.timeout += 1
 
-                if self.timeout > 100:
+                if self.timeout > 500:
                     self.set_state(self.possibleStates['landing'])
                     self.timeout = 0
 
